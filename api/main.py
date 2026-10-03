@@ -6,10 +6,11 @@ from pydantic import BaseModel
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 
+HF_MODEL   = "prsubedi/solar-nlp-classifier"
 MODELS_DIR = Path(__file__).parent.parent / "models"
 
-tokenizer = AutoTokenizer.from_pretrained(str(MODELS_DIR))
-model     = AutoModelForSequenceClassification.from_pretrained(str(MODELS_DIR))
+tokenizer = AutoTokenizer.from_pretrained(HF_MODEL)
+model     = AutoModelForSequenceClassification.from_pretrained(HF_MODEL)
 model.eval()
 
 with open(MODELS_DIR / "label_encoder.pkl", "rb") as f:
