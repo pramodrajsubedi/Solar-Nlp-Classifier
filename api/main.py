@@ -1,35 +1,7 @@
-import pickle
-import numpy as np
-from pathlib import Path
-from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from pydantic import BaseModel
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
-import torch
 
-HF_MODEL   = "prsubedi/solar-nlp-classifier"
-MODELS_DIR = Path(__file__).parent.parent / "models"
-
-tokenizer = None
-model     = None
-le        = None
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global tokenizer, model, le
-    tokenizer = AutoTokenizer.from_pretrained(HF_MODEL)
-    model     = AutoModelForSequenceClassification.from_pretrained(HF_MODEL)
-    model.eval()
-    with open(MODELS_DIR / "label_encoder.pkl", "rb") as f:
-        le = pickle.load(f)
-    print("Model loaded successfully")
-    yield
-
-app = FastAPI(
-    title="Space Physics NLP Classifier",
-    version="2.0.0",
-    lifespan=lifespan,
-)
+app = FastAPI(title="Space Physics NLP Classifier", version="2.0.0")
 
 
 class TextInput(BaseModel):
@@ -39,7 +11,7 @@ class TextInput(BaseModel):
 class ClassificationOutput(BaseModel):
     label:      str
     confidence: float
-    all_scores: dict
+    message:    str
 
 
 @app.get("/")
@@ -54,24 +26,8 @@ def health():
 
 @app.post("/classify", response_model=ClassificationOutput)
 def classify(data: TextInput):
-    inputs = tokenizer(
-        data.text,
-        return_tensors="pt",
-        truncation=True,
-        padding="max_length",
-        max_length=512,
-    )
-    with torch.no_grad():
-        logits = model(**inputs).logits
-
-    probs      = torch.softmax(logits, dim=-1).squeeze().numpy()
-    pred_idx   = int(np.argmax(probs))
-    pred_label = le.classes_[pred_idx]
-    confidence = round(float(probs[pred_idx]), 4)
-    all_scores = {le.classes_[i]: round(float(probs[i]), 4) for i in range(len(le.classes_))}
-
     return ClassificationOutput(
-        label=pred_label,
-        confidence=confidence,
-        all_scores=all_scores,
+        label="Solar Stellar",
+        confidence=0.7664,
+        message="Full model inference available locally. Render free tier does not support 1.5GB SciBERT. See GitHub for full implementation.",
     )
