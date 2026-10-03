@@ -1,6 +1,7 @@
 import pickle
 import numpy as np
 from pathlib import Path
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from pydantic import BaseModel
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
@@ -9,20 +10,26 @@ import torch
 HF_MODEL   = "prsubedi/solar-nlp-classifier"
 MODELS_DIR = Path(__file__).parent.parent / "models"
 
-app = FastAPI(title="Space Physics NLP Classifier", version="2.0.0")
-
 tokenizer = None
 model     = None
 le        = None
 
-def load_model():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     global tokenizer, model, le
-    if model is None:
-        tokenizer = AutoTokenizer.from_pretrained(HF_MODEL)
-        model     = AutoModelForSequenceClassification.from_pretrained(HF_MODEL)
-        model.eval()
-        with open(MODELS_DIR / "label_encoder.pkl", "rb") as f:
-            le = pickle.load(f)
+    tokenizer = AutoTokenizer.from_pretrained(HF_MODEL)
+    model     = AutoModelForSequenceClassification.from_pretrained(HF_MODEL)
+    model.eval()
+    with open(MODELS_DIR / "label_encoder.pkl", "rb") as f:
+        le = pickle.load(f)
+    print("Model loaded successfully")
+    yield
+
+app = FastAPI(
+    title="Space Physics NLP Classifier",
+    version="2.0.0",
+    lifespan=lifespan,
+)
 
 
 class TextInput(BaseModel):
@@ -47,7 +54,6 @@ def health():
 
 @app.post("/classify", response_model=ClassificationOutput)
 def classify(data: TextInput):
-    load_model()
     inputs = tokenizer(
         data.text,
         return_tensors="pt",
