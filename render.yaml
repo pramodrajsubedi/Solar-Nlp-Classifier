@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: solar-nlp-api
+    env: docker
+    plan: free
+    healthCheckPath: /health
+    numInstances: 1
