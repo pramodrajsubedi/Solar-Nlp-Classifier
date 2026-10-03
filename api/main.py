@@ -9,14 +9,20 @@ import torch
 HF_MODEL   = "prsubedi/solar-nlp-classifier"
 MODELS_DIR = Path(__file__).parent.parent / "models"
 
-tokenizer = AutoTokenizer.from_pretrained(HF_MODEL)
-model     = AutoModelForSequenceClassification.from_pretrained(HF_MODEL)
-model.eval()
-
-with open(MODELS_DIR / "label_encoder.pkl", "rb") as f:
-    le = pickle.load(f)
-
 app = FastAPI(title="Space Physics NLP Classifier", version="2.0.0")
+
+tokenizer = None
+model     = None
+le        = None
+
+def load_model():
+    global tokenizer, model, le
+    if model is None:
+        tokenizer = AutoTokenizer.from_pretrained(HF_MODEL)
+        model     = AutoModelForSequenceClassification.from_pretrained(HF_MODEL)
+        model.eval()
+        with open(MODELS_DIR / "label_encoder.pkl", "rb") as f:
+            le = pickle.load(f)
 
 
 class TextInput(BaseModel):
@@ -41,6 +47,7 @@ def health():
 
 @app.post("/classify", response_model=ClassificationOutput)
 def classify(data: TextInput):
+    load_model()
     inputs = tokenizer(
         data.text,
         return_tensors="pt",
